@@ -120,7 +120,7 @@
 
     <script>
         // ======= 【請在此處替換成您 Google Apps Script 部署後的 Web App 網址】 =======
-        const API_URL = 'YOUR_GAS_URL'; 
+        const API_URL = 'https://script.google.com/macros/s/AKfycbxbuw5Mth5zHmmEPO-soFFyP_9i9bl0aDg9-rSw5NN_6Z2GJbNQS1GQegtJlJlVUKQPmg/exec'; 
         // =======================================================================
         
         let customers = [];
@@ -129,7 +129,7 @@
         async function fetchData() {
             try {
                 // 如果尚未設定 API_URL，載入預設示範資料
-                if(API_URL === 'https://script.google.com/macros/s/AKfycbxbuw5Mth5zHmmEPO-soFFyP_9i9bl0aDg9-rSw5NN_6Z2GJbNQS1GQegtJlJlVUKQPmg/exec') {
+                if(API_URL === 'YOUR_GAS_URL') {
                     customers = [
                         {name: "超鈒台南總部", address: "台南市南區新興路XXX號", zone: "南區", lat: "22.976", lng: "120.192", phone: "06-1234567", contact: "王經理", note: "總部大樓配送，請送至一樓簽收"},
                         {name: "安平批發門市", address: "台南市安平區健康三街XXX號", zone: "安平區", lat: "", lng: "", phone: "0912345678", contact: "陳小姐", note: "走健康三街正門，門口好停車"},
