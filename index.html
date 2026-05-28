@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>超鈒 Super Fan 配送助手</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#00AEEF">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="超鈒助手">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        :root {
+            --primary: #00AEEF;
+            --secondary: #0072BC;
+            --bg: #f1f5f9;
+            --text: #0f172a;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg);
+            margin: 0;
+            padding: 0;
+            color: var(--text);
+            -webkit-tap-highlight-color: transparent;
+        }
+        .header {
+            background: linear-gradient(135deg, var(--secondary) 0%, #0096db 100%);
+            color: white;
+            padding: 20px 15px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .header h2 { margin: 0; font-size: 22px; font-weight: bold; letter-spacing: 1px; }
+        .search-container {
+            padding: 15px;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 10px;
+            border: 2px solid #e2e8f0;
+            font-size: 18px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input:focus { border-color: var(--primary); }
+        .zone-bar {
+            display: flex;
+            overflow-x: auto;
+            padding: 12px 15px;
+            gap: 10px;
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            -webkit-overflow-scrolling: touch;
+        }
+        .zone-bar::-webkit-scrollbar { display: none; }
+        .zone-tag {
+            padding: 8px 18px;
+            background: #e2e8f0;
+            color: #475569;
+            border-radius: 20px;
+            white-space: nowrap;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .zone-tag.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 2px 6px rgba(0,174,239,0.3);
+        }
+        .list { padding: 15px; }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+            border-left: 6px solid var(--secondary);
+        }
+        .card h3 { margin: 0 0 12px 0; color: var(--secondary); font-size: 22px; font-weight: bold; }
+        .card p { margin: 8px 0; color: #334155; font-size: 18px; line-height: 1.5; }
+        .card .label { font-weight: bold; color: #64748b; margin-right: 5px; }
+        .btn-group { display: flex; gap: 12px; margin-top: 18px; }
+        .btn {
+            flex: 1;
+            padding: 14px;
+            border-radius: 10px;
+            text-align: center;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+        .btn-nav { background: var(--primary); color: white; }
+        .btn-call { background: #10b981; color: white; }
+        .no-data { text-align: center; padding: 40px; color: #64748b; font-size: 18px; }
+    </style>
+</head>
+<body>
+    <div class="header"><h2>超鈒 Super Fan 配送助手</h2></div>
+    <div class="search-container">
+        <input type="text" id="searchInput" placeholder="🔍 搜尋公司名稱、地址、聯絡人..." onkeyup="filterData()">
+    </div>
+    <div class="zone-bar" id="zoneBar"></div>
+    <div class="list" id="customerList">⌛ 正在載入雲端客戶資料...</div>
+
+    <script>
+        // 請在此處替換成您 Google Apps Script 部署後的網頁應用程式 URL
+        const API_URL = 'YOUR_GAS_URL'; 
+        let customers = [];
+        let currentZone = '全部';
+
+        async function fetchData() {
+            try {
+                // 如果尚未設定 API_URL，載入示範資料
+                if(API_URL === 'YOUR_GAS_URL') {
+                    customers = [
+                        {name: "超鈒台南總部", address: "台南市南區新興路XXX號", zone: "南區", lat: "22.976", lng: "120.192", phone: "06-1234567", contact: "王經理", note: "總部大樓配送，請送至一樓簽收"},
+                        {name: "安平批發門市", address: "台南市安平區健康三街XXX號", zone: "安平區", lat: "", lng: "", phone: "0912345678", contact: "陳小姐", note: "走健康三街正門，門口好停車"},
+                        {name: "永康永大物流", address: "台南市永康區永大路二段XXX號", zone: "永康區", lat: "23.015", lng: "120.256", phone: "0987654321", contact: "張先生", note: "後方倉庫卸貨區，需換證件"}
+                    ];
+                } else {
+                    const response = await fetch(API_URL);
+                    customers = await response.json();
+                }
+                renderZones();
+                renderList(customers);
+            } catch (e) {
+                document.getElementById('customerList').innerHTML = '<div class="no-data">❌ 讀取失敗，請檢查網路連線或 API 設定。</div>';
+            }
+        }
+
+        function renderZones() {
+            const zones = ['全部', ...new Set(customers.map(c => c.zone).filter(z => z))];
+            const bar = document.getElementById('zoneBar');
+            bar.innerHTML = zones.map(z => {
+                const activeClass = z === currentZone ? 'active' : '';
+                return `<div class="zone-tag ${activeClass}" onclick="selectZone('${z}')">${z}</div>`;
+            }).join('');
+        }
+
+        function renderList(data) {
+            const container = document.getElementById('customerList');
+            if(data.length === 0) {
+                container.innerHTML = '<div class="no-data">📭 沒有找到符合的客戶資料</div>';
+                return;
+            }
+            container.innerHTML = data.map(c => {
+                // 判斷是否有經緯度座標，若有則直接用座標導航，若無則用「公司名+地址」進行智慧搜尋導航
+                const mapUrl = (c.lat && c.lng) 
+                    ? `https://www.google.com/maps/search/?api=1&query=${c.lat},${c.lng}`
+                    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.zone + ' ' + c.name + ' ' + c.address)}`;
+                
+                return `
+                    <div class="card">
+                        <h3>${c.name}</h3>
+                        <p><span class="label">📍 地址:</span>${c.address}</p>
+                        <p><span class="label">👤 聯絡人:</span>${c.contact || '未指定'}</p>
+                        <p><span class="label">📝 注意事項:</span>${c.note || '無'}</p>
+                        <div class="btn-group">
+                            <a href="tel:${c.phone}" class="btn btn-call">📞 一鍵撥號</a>
+                            <a href="${mapUrl}" target="_blank" class="btn btn-nav">🗺️ 開啟導航</a>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectZone(zone) {
+            currentZone = zone;
+            renderZones();
+            filterData();
+        }
+
+        function filterData() {
+            const searchVal = document.getElementById('searchInput').value.toLowerCase();
+            let filtered = customers;
+            
+            if (currentZone !== '全部') {
+                filtered = filtered.filter(c => c.zone === currentZone);
+            }
+            
+            if (searchVal) {
+                filtered = filtered.filter(c => 
+                    c.name.toLowerCase().includes(searchVal) || 
+                    c.address.toLowerCase().includes(searchVal) ||
+                    (c.contact && c.contact.toLowerCase().includes(searchVal))
+                );
+            }
+            renderList(filtered);
+        }
+
+        // PWA Service Worker 註冊
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('超鈒助手 PWA 註冊成功！'))
+                    .catch(err => console.log('PWA 註冊失敗：', err));
+            });
+        }
+
+        fetchData();
+    </script>
+</body>
+</html>
