@@ -119,7 +119,7 @@
     <div class="list" id="customerList">⌛ 正在載入雲端客戶資料...</div>
 
     <script>
-        // ======= 【請在此處替換成您 Google Apps Script 部署後的 Web App 網址】 =======
+        // ======= 【已成功串接您的 Google Apps Script 網址】 =======
         const API_URL = 'https://script.google.com/macros/s/AKfycbxbuw5Mth5zHmmEPO-soFFyP_9i9bl0aDg9-rSw5NN_6Z2GJbNQS1GQegtJlJlVUKQPmg/exec'; 
         // =======================================================================
         
@@ -128,17 +128,8 @@
 
         async function fetchData() {
             try {
-                // 如果尚未設定 API_URL，載入預設示範資料
-                if(API_URL === 'YOUR_GAS_URL') {
-                    customers = [
-                        {name: "超鈒台南總部", address: "台南市南區新興路XXX號", zone: "南區", lat: "22.976", lng: "120.192", phone: "06-1234567", contact: "王經理", note: "總部大樓配送，請送至一樓簽收"},
-                        {name: "安平批發門市", address: "台南市安平區健康三街XXX號", zone: "安平區", lat: "", lng: "", phone: "0912345678", contact: "陳小姐", note: "走健康三街正門，門口好停車"},
-                        {name: "永康永大物流", address: "台南市永康區永大路二段XXX號", zone: "永康區", lat: "23.015", lng: "120.256", phone: "0987654321", contact: "張先生", note: "後方倉庫卸貨區，需換證件"}
-                    ];
-                } else {
-                    const response = await fetch(API_URL);
-                    customers = await response.json();
-                }
+                const response = await fetch(API_URL);
+                customers = await response.json();
                 renderZones();
                 renderList(customers);
             } catch (e) {
@@ -147,7 +138,11 @@
         }
 
         function renderZones() {
-            const zones = ['全部', ...new Set(customers.map(c => c.zone).filter(z => z))];
+            // 從資料中提取所有不重複的行政區
+            const uniqueZones = [...new Set(customers.map(c => c.zone).filter(z => z))];
+            // 強制組合順序：第一個是「全部」，第二個固定放「注意事項」，後面接著原本的行政區
+            const zones = ['全部', '注意事項', ...uniqueZones];
+            
             const bar = document.getElementById('zoneBar');
             bar.innerHTML = zones.map(z => {
                 const activeClass = z === currentZone ? 'active' : '';
@@ -162,12 +157,11 @@
                 return;
             }
             container.innerHTML = data.map(c => {
-                // ======= 【方案 B 核心機制優化版】 =======
                 // 狀況一：如果有經緯度座標（不管是自動生成的還是司機回報校正的），導航時同時帶入座標與公司名稱，讓 Google Maps 自動精準吸附地標
-                // 狀況二：若無座標，則改用「行政區+公司名+地址」組合進行高智商模糊導航
+                // 狀況二：若無座標，則改用「行政區+公司名+地址」組合進行模糊導航
                 const mapUrl = (c.lat && c.lng) 
-                    ? `https://www.google.com/maps/search/?api=1&query=${c.lat},${c.lng}(${encodeURIComponent(c.name)})`
-                    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.zone + ' ' + c.name + ' ' + c.address)}`;
+                    ? `https://maps.google.com/?q=${c.lat},${c.lng}(${encodeURIComponent(c.name)})`
+                    : `https://maps.google.com/?q=${encodeURIComponent(c.zone + ' ' + c.name + ' ' + c.address)}`;
                 
                 return `
                     <div class="card">
@@ -194,15 +188,22 @@
             const searchVal = document.getElementById('searchInput').value.toLowerCase();
             let filtered = customers;
             
-            if (currentZone !== '全部') {
+            // 處理頂部快捷按鈕的過濾邏輯
+            if (currentZone === '注意事項') {
+                // 智慧判斷：注意事項欄位有字、且不是寫"無"的，才顯示出來
+                filtered = filtered.filter(c => c.note && c.note.trim() !== "" && c.note.trim() !== "無");
+            } else if (currentZone !== '全部') {
+                // 點擊其他如「東區、善化區」時，維持原本的行政區篩選
                 filtered = filtered.filter(c => c.zone === currentZone);
             }
             
+            // 處理搜尋框文字模糊搜尋
             if (searchVal) {
                 filtered = filtered.filter(c => 
                     c.name.toLowerCase().includes(searchVal) || 
                     c.address.toLowerCase().includes(searchVal) ||
-                    (c.contact && c.contact.toLowerCase().includes(searchVal))
+                    (c.contact && c.contact.toLowerCase().includes(searchVal)) ||
+                    (c.note && c.note.toLowerCase().includes(searchVal)) // 搜尋框也可以順便搜尋注意事項文字
                 );
             }
             renderList(filtered);
